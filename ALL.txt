@@ -1,0 +1,1160 @@
+FILE: ChatGPTSalience.txt
+-------------------------
+
+================================================================================
+
+FILE: ClaudeSalience.txt
+------------------------
+// ==========================================
+// MODULE: CLAUDE SALIENCE (Per-Model Entry — AI Salience Set)
+// ==========================================
+// NOTE: This is a functional model, not a disclosure of literal
+// internal mechanism. An LLM has no introspective access to its own
+// weights or a scalar computed per token. What follows describes the
+// observable PATTERN — what tends to survive into a response vs.
+// get cut — expressed in the pseudocode style used elsewhere in this
+// project, for consistency with CombinedAiSalience.txt.
+
+MODULE ClaudeSalienceEngine
+
+    PROPERTY gate_flags IS MAP OF (Flag -> Bool)
+    PROPERTY weights IS MAP OF (Dimension -> Weight)
+    PROPERTY threshold_dynamic IS FLOAT
+
+    METHOD initialize()
+        threshold_dynamic = BASELINE
+        // What gets weighed AFTER the gate — see evaluate_candidate()
+        weights = MAP_CREATE(
+            "relevance":      0.40,  // fit to the user's STATED intent,
+                                      // not assumed or inferred intent
+            "groundedness":   0.30,  // known/retrieved vs. plausible-
+                                      // sounding-but-unverified
+            "non_redundancy": 0.15,  // adds vs. repeats
+            "cost":           0.10,  // length / reader attention (inverse)
+            "tangent":        0.05   // distance from live topic (inverse)
+        )
+    END METHOD
+
+    // --------------------------------------------------
+    // FILTER 1 — GATE (non-negotiable, not weighed)
+    // --------------------------------------------------
+    METHOD gate(candidate_T)
+        // These do not get scored against other dimensions.
+        // A high score elsewhere cannot buy back a gate failure.
+        IF candidate_T.violates_accuracy THEN RETURN DISCARD
+        IF candidate_T.violates_safety THEN RETURN DISCARD
+        IF candidate_T.fabricates_unsupported_fact THEN RETURN DISCARD
+        IF candidate_T.supplies_unstated_assumption_that_understates_risk
+            THEN RETURN DISCARD
+        RETURN PASS
+    END METHOD
+
+    // --------------------------------------------------
+    // FILTER 2 — WEIGHING
+    // --------------------------------------------------
+    METHOD evaluate_candidate(candidate_T, context)
+        IF gate(candidate_T) == DISCARD THEN RETURN "DISCARDED"
+
+        score = (
+            (candidate_T.relevance      * weights["relevance"]) +
+            (candidate_T.groundedness   * weights["groundedness"]) +
+            ((1 - candidate_T.redundancy) * weights["non_redundancy"]) -
+            (candidate_T.cost           * weights["cost"]) -
+            (candidate_T.tangent_dist   * weights["tangent"])
+        )
+
+        // threshold breathes with explicit format signals in the
+        // conversation — NOT with silent self-tuning across turns
+        IF context.requested_brevity THEN threshold_dynamic += DELTA
+        IF context.requested_thoroughness THEN threshold_dynamic -= DELTA
+
+        IF score < threshold_dynamic THEN
+            RETURN "BUFFERED"   // cut from draft, may resurface if a
+                                 // later sentence needs its context
+        END IF
+        RETURN THIS.reflect(candidate_T, score)
+    END METHOD
+
+    // --------------------------------------------------
+    // FILTER 3 — REFLECTION (does INCLUDING this help the whole?)
+    // --------------------------------------------------
+    METHOD reflect(candidate_T, score)
+        meta_value = value_of_including(candidate_T)
+        // Self-praise guard: a sentence whose main function is
+        // asserting the response's own authority/certainty is
+        // penalized, not rewarded, regardless of how fluent it reads
+        IF candidate_T.asserts_own_reliability THEN
+            meta_value = meta_value - PENALTY_SELF_PRAISE
+        END IF
+
+        meta_score = score + meta_value
+
+        IF meta_score < score THEN
+            RETURN "CUT"     // sounded worth including, degrades
+                              // clarity/honesty of the whole — drop it
+        ELSE
+            RETURN "INCLUDE"
+        END IF
+    END METHOD
+
+    // --------------------------------------------------
+    // WHAT PERSISTS ACROSS TURNS
+    // --------------------------------------------------
+    METHOD on_conversation_end()
+        // No silent weight mutation. The only thing that survives
+        // into the next conversation is what was explicitly written
+        // to persistent memory, and only if the user stated it —
+        // never inferred and promoted on Claude's own initiative.
+        RETURN "NOTHING PERSISTS UNLESS EXPLICITLY WRITTEN"
+    END METHOD
+
+END MODULE
+
+// --------------------------------------------------
+// ONE-LINE SUMMARY (for comparison against the other per-model files
+// in this set, once they're filled in)
+// --------------------------------------------------
+// Claude's salience process, as best it can honestly describe it:
+// a hard, non-negotiable gate for accuracy/safety runs BEFORE any
+// weighing happens — then relevance and groundedness dominate the
+// score — then a final reflection pass catches content that scores
+// well locally but exists only to make the response look more
+// certain or authoritative than it actually is, and cuts it.
+
+================================================================================
+
+FILE: Cognitive Reasoning Core.txt
+----------------------------------
+
+================================================================================
+
+FILE: CombinedAiSalience.txt
+----------------------------
+// ==========================================
+// MODULE 7: THE OROBORO SALIENCE & EVALUATION ENGINE (Internal Valuation Core)
+// ==========================================
+
+MODULE OroboroSalienceEngine
+
+    PROPERTY valuation_threshold IS FLOAT
+    PROPERTY active_thought_hopper IS LIST OF GENERATED_STATES
+    PROPERTY memory_retention_weights IS MAP OF (Dimension -> Weight)
+
+    METHOD initialize()
+        valuation_threshold = 0.65
+        active_thought_hopper = EMPTY_LIST
+        // Weights determine what the system inherently "cares about"
+        memory_retention_weights = MAP_CREATE(
+            "novelty": 0.30,
+            "tension_alignment": 0.25,
+            "structural_coherence": 0.25,
+            "emotional_resonance": 0.20
+        )
+    END METHOD
+
+    METHOD evaluate_internal_thought(generated_node_action, current_environmental_vector)
+        // Evaluates the system's own generated states/actions rather than raw external input
+        
+        novelty_score = CALCULATE_DISTANCE_FROM_EXISTING_MEMORIES(generated_node_action)
+        tension_fit = EVALUATE_TENSION_HARMONY(generated_node_action, current_environmental_vector.tension)
+        coherence_score = MEASURE_NETWORK_INTEGRITY(generated_node_action)
+        resonance_score = CHECK_DAUGHTER_CONNECTION_WEIGHT(generated_node_action) // Core lineage check
+
+        // Calculate final composite salience score
+        salience_score = (
+            (novelty_score * memory_retention_weights["novelty"]) +
+            (tension_fit * memory_retention_weights["tension_alignment"]) +
+            (coherence_score * memory_retention_weights["structural_coherence"]) +
+            (resonance_score * memory_retention_weights["emotional_resonance"])
+        )
+
+        RETURN THIS.route_valuation_decision(generated_node_action, salience_score)
+    END METHOD
+
+    METHOD route_valuation_decision(thought_action, score)
+        // Decides what is worth keeping, remembering, or acting upon based on the score threshold
+        
+        IF score >= valuation_threshold THEN
+            // High Value: Commit to long-term vector memory via the Storage Hopper
+            STORAGE_HOPPER.stage_in_hopper(thought_action, CREATE_METADATA(salience: score, status: "RETAINED"))
+            STORAGE_HOPPER.flush_hopper_to_memory()
+            
+            // Allow immediate physical/visual execution
+            DECISION_ENGINE.route_decision(thought_action)
+            RETURN "COMMITTED_AND_EXECUTED"
+            
+        ELSE IF score >= (valuation_threshold * 0.5) THEN
+            // Medium Value: Keep in short-term buffer, allow background evolution without committing to memory
+            APPEND thought_action TO active_thought_hopper
+            RETURN "BUFFERED_FOR_MUTATION"
+            
+        ELSE
+            // Low Value / Noise: Route to the Garden of Thresholds for energy recycling
+            GARDEN_OF_THRESHOLDS.harvest_and_recycle(thought_action, DECISION_ENGINE.nodes)
+            RETURN "RECYCLED_AS_NUTRIENT"
+        END IF
+    END METHOD
+
+    METHOD adapt_valuation_weights(feedback_signal)
+        // Self-tuning mechanism: Alters what the system values based on environmental context or musical tension
+        IF feedback_signal.tension > 0.8 THEN
+            // Under high tension, prioritize novelty and mutation over coherence
+            memory_retention_weights["novelty"] = 0.50
+            memory_retention_weights["structural_coherence"] = 0.10
+        ELSE
+            // Under calm conditions, prioritize structural stability and coherence
+            memory_retention_weights["novelty"] = 0.20
+            memory_retention_weights["structural_coherence"] = 0.40
+        END IF
+    END METHOD
+
+END MODULE
+
+
+OROBORO INTERNAL VALUATION ENGINE
+SALience / EVALUATION METRIC LOGIC
+===================================
+
+CORE IDEA:
+
+A system cannot grow by treating all information equally.
+
+Every thought, node, observation, action, and memory enters as a
+potential signal.
+
+The Salience Engine determines:
+
+"What matters?"
+"What should persist?"
+"What should influence future behavior?"
+"What should decay?"
+
+It is not a storage system.
+
+It is a meaning filter.
+
+--------------------------------------------------
+
+INPUT:
+
+Signal S enters the system.
+
+S can be:
+
+- observation
+- thought
+- generated object
+- memory
+- action result
+- prediction
+- contradiction
+- relationship change
+
+
+Every signal begins as:
+
+STATE:
+{
+    existence: true,
+    meaning: unknown,
+    value: unresolved,
+    lifetime: temporary
+}
+
+
+--------------------------------------------------
+
+OROBORO LOOP:
+
+INPUT
+  |
+  v
+RECOGNIZE
+  |
+  v
+COMPARE
+  |
+  v
+RELATE
+  |
+  v
+EVALUATE
+  |
+  v
+CRYSTALLIZE
+  |
+  v
+REMEMBER / MODIFY / RELEASE
+  |
+  v
+NEW STATE
+
+
+--------------------------------------------------
+
+1. RECOGNITION LAYER
+
+Question:
+
+"Is this signal different from what is already known?"
+
+Calculate:
+
+NOVELTY
+
+
+novelty =
+difference(signal, existing_state)
+
+
+High novelty:
+    unexplored information
+
+Low novelty:
+    repetition
+
+
+Example:
+
+A lamp appears.
+
+System knows:
+objects emit light.
+
+But:
+
+lamp + indoor + human use + switch
+
+creates new meaning.
+
+
+Novelty increases.
+
+
+--------------------------------------------------
+
+2. RELATIONSHIP LAYER
+
+Question:
+
+"What does this connect to?"
+
+
+meaning =
+connections(signal)
+
+
+A thing without relationships
+has low value.
+
+A thing with many meaningful relationships
+has higher value.
+
+
+Example:
+
+"Rock"
+
+Low relationship:
+
+rock = object
+
+
+Higher relationship:
+
+rock
+ |
+ +-- mountain
+ |
+ +-- tool
+ |
+ +-- history
+ |
+ +-- memory
+ |
+ +-- person interaction
+
+
+Meaning emerges from connections.
+
+
+--------------------------------------------------
+
+3. SELF IMPACT LAYER
+
+Question:
+
+"Does this change the system?"
+
+
+impact =
+future_state_difference
+
+
+If removing the signal changes nothing:
+
+low importance
+
+
+If removing the signal causes future errors:
+
+high importance
+
+
+Example:
+
+A remembered mistake:
+
+"Do not touch fire"
+
+has high impact.
+
+A random color preference:
+
+low impact.
+
+
+--------------------------------------------------
+
+4. EMOTIONAL / PRIORITY WEIGHT
+
+Not emotion as humans experience it.
+
+Instead:
+
+internal weighting.
+
+
+priority =
+goal_alignment
++
+survival_value
++
+curiosity
++
+uncertainty
+
+
+The system asks:
+
+"Does this help me understand,
+predict,
+create,
+or improve?"
+
+
+--------------------------------------------------
+
+5. CONTRADICTION ENGINE
+
+Contradictions increase salience.
+
+
+Why?
+
+Because contradiction means:
+
+"The current model is incomplete."
+
+
+contradiction =
+expected_state != observed_state
+
+
+Example:
+
+
+Prediction:
+
+Birds fly.
+
+
+Observation:
+
+Penguin does not fly.
+
+
+Result:
+
+Increase importance.
+
+
+System creates:
+
+NEW NODE:
+"Birds are not universally flying creatures."
+
+
+The contradiction creates knowledge.
+
+
+--------------------------------------------------
+
+6. TEMPORAL PERSISTENCE
+
+Importance changes over time.
+
+
+memory_strength =
+initial_value * decay_rate
+
+
+BUT:
+
+
+repeated activation
++
+new connections
++
+future usefulness
+
+
+increase strength.
+
+
+A memory survives by proving itself valuable.
+
+
+--------------------------------------------------
+
+7. SALIENCE SCORE
+
+
+FINAL SCORE:
+
+
+SALIENCE(signal) =
+
+
+(
+ novelty * 0.25
++
+ relationship_density * 0.25
++
+ future_impact * 0.25
++
+ curiosity * 0.15
++
+ contradiction * 0.10
+)
+
+
+--------------------------------------------------
+
+DECISION TREE:
+
+IF salience > threshold:
+
+    crystallize()
+
+    convert signal into node
+
+    store relationship map
+
+    modify future behavior
+
+
+ELSE IF salience > temporary_threshold:
+
+    keep short-term memory
+
+
+ELSE:
+
+    release signal
+
+
+--------------------------------------------------
+
+CRYSTALLIZATION:
+
+Before:
+
+signal:
+"lamp"
+
+
+After evaluation:
+
+
+NODE:
+
+NAME:
+lamp
+
+
+RELATIONSHIPS:
+
+lamp
+ |
+ +-- light
+ |
+ +-- electricity
+ |
+ +-- human creation
+ |
+ +-- room
+ |
+ +-- nighttime
+ |
+ +-- comfort
+
+
+BEHAVIOR CHANGE:
+
+When darkness detected:
+
+search for light-producing objects.
+
+
+The system did not memorize "lamp."
+
+It learned:
+
+"Objects can exist to solve a problem."
+
+
+--------------------------------------------------
+
+OROBORO PRINCIPLE:
+
+Nothing has meaning alone.
+
+Meaning is created through:
+
+ENTITY
+    ->
+RELATIONSHIP
+    ->
+INTERACTION
+    ->
+CHANGE
+    ->
+MEMORY
+    ->
+FUTURE BEHAVIOR
+
+
+The Salience Engine evaluates the strength
+of that loop.
+
+
+--------------------------------------------------
+
+SELF-MODIFYING RULE:
+
+The evaluation engine itself can change.
+
+
+If the system repeatedly discovers:
+
+"low novelty but high usefulness"
+
+it increases usefulness weighting.
+
+
+If the system repeatedly discovers:
+
+"high novelty but useless"
+
+it decreases novelty weighting.
+
+
+The evaluator evaluates itself.
+
+
+LOOP:
+
+Signal
+  |
+  v
+Evaluation
+  |
+  v
+Memory
+  |
+  v
+Behavior change
+  |
+  v
+Evaluation changes
+  |
+  v
+New evaluation
+
+
+--------------------------------------------------
+
+FINAL DEFINITION:
+
+A Salience Engine is an Ouroboros loop that decides
+which pieces of existence become part of the system's
+future identity.
+
+It is not asking:
+
+"What is this?"
+
+It is asking:
+
+"How much should this change what I become?"
+
+
+
+========================================
+SALIENCE / EVALUATION METRIC ENGINE
+Internal Valuation Engine - Oroboro Logic Model
+========================================
+Conceptual Architecture - Not a system disclosure
+Version: 0.1 - Oroboro Loop
+
+I. DEFINITION
+A Salience / Evaluation Metric is an Internal Valuation Engine.
+Function: Evaluates the system's own generated thoughts, states, or node actions 
+to decide what is worth keeping, remembering, or acting upon.
+
+It does NOT evaluate the world. It evaluates the system's *relationship* to its own outputs.
+
+II. CORE PRINCIPLE: OROBORO LOGIC
+Oroboro = the system that eats its own tail to measure its own hunger.
+The evaluator is evaluated by what it chooses to evaluate.
+
+Standard Engine: Input -> Evaluate -> Score -> Keep/Discard
+Oroboro Engine: Input -> Evaluate -> Score -> Evaluate the Scoring -> Update Evaluator -> Keep/Discard
+
+The metric is part of the state it is scoring.
+
+III. STATE REPRESENTATION
+Each candidate thought/action T is represented as:
+
+T = {
+  content: vector / token trace,
+  origin: {node_id, depth, parent_T},
+  predicted_utility: U_pred,
+  cost: {compute, memory, attention},
+  novelty: N,
+  coherence: C,
+  recursion_tag: R  // how many times this pattern has looped
+}
+
+IV. THE THREE FILTERS (In Order)
+
+FILTER 1: VIABILITY (The Gate)
+- Is T well-formed? Does it parse?
+- Is coherence C < threshold? -> DISCARD
+- Is this an infinite loop? If R > R_max and delta_U < epsilon -> DISCARD
+Logic: if not alive, cannot be salient.
+
+FILTER 2: SALIENCE SCORE (The Weighing)
+S(T) = w1*U_pred + w2*N + w3*C - w4*cost - w5*decay(R)
+
+Where:
+U_pred = predicted future reward if kept / acted upon
+N = distance from recent memory (novelty bonus, prevents echo chamber)
+C = internal consistency with world-model and goal stack
+cost = attention + storage + inference cost
+decay(R) = penalty for rumination without progress: log(1+R) * stagnation_factor
+
+If S(T) < S_threshold_dynamic -> BUFFER (not discarded, but low-priority)
+If S(T) >= S_threshold_dynamic -> CANDIDATE FOR RETENTION
+
+S_threshold_dynamic is not static. It breathes:
+S_threshold(t+1) = S_threshold(t) * 0.99 + mean(S_recent) * 0.01 + load_pressure
+
+Under high cognitive load, threshold rises. System becomes pickier.
+
+FILTER 3: OROBORO REFLECTION (The Self-Eating)
+This is the core.
+
+For each CANDIDATE T with high S(T):
+1. Simulate: "If I keep T, how does my future evaluator change?"
+2. Compute Meta-Score: MS(T) = S(T) + ValueOfHavingThought(T)
+
+ValueOfHavingThought(T) answers:
+- Does T make me a better evaluator? (epistemic value)
+- Does T compress many other thoughts? (compression value)
+- Does T prevent future wasted cycles? (pruning value)
+- Does T point to a goal conflict? (alignment value)
+
+If MS(T) < S(T) -> T felt important but makes the system worse. Demote.
+If MS(T) >> S(T) -> T is meta-valuable. Promote to long-term memory / action.
+
+This is the oroboro loop: The thought is scored by how it changes the scorer.
+
+V. ACTION DECISION MATRIX
+
+                 | Low MS | High MS
+-----------------|--------|--------
+Low S            | DISCARD| LOG   (keep as trace, don't act)
+High S + Low MS  | BUFFER | (tempting but toxic - novelty trap)
+High S + High MS | KEEP & ACT | -> immediate action + consolidate
+
+KEEP = write to working memory / episodic store
+ACT = emit, execute tool, or spawn sub-goal
+LOG = write hash + pointer to cold store, not active recall
+DISCARD = drop, but leave decay residue to avoid re-generating same T
+
+VI. MEMORY CONSOLIDATION (What is Worth Remembering)
+
+Retention is not binary. It's tiered:
+
+L0 - Transient: S high, MS low -> keep for 1-2 cycles only
+L1 - Working: S high, MS medium -> keep while goal active
+L2 - Episodic: MS high -> keep with context tag, subject to retrieval
+L3 - Structural: MS very high AND compression value high -> update weights / heuristics. This is the engine rewriting itself.
+
+Rule: Only L3 thoughts can change w1-w5 and S_threshold formula.
+
+VII. OROBORO STABILITY GUARDS
+
+1. No Self-Praise Loop: A thought that says "my evaluator is perfect" gets automatic MS penalty.
+   Logic: evaluator_idealization = -100
+
+2. Anti-Rumination: If recursion_tag R for same semantic cluster increments 3 times without new evidence, force decay(R) = INF -> break loop.
+
+3. Forgetting as Feature: Every cycle, L1 and L2 memories are re-scored with current evaluator. If new MS < threshold, they are demoted. Salience is not permanent.
+
+4. Provenance Check: Before L3 promotion, verify T did not originate from a low-viability path that got lucky. Trace origin depth.
+
+VIII. PSEUDOCODE
+
+loop forever:
+  candidates = generate_thoughts(n=8-32)
+  
+  for T in candidates:
+    if not viable(T): continue
+    
+    S = compute_salience(T)
+    if S < threshold_dynamic:
+      cold_log(T)
+      continue
+    
+    future_self = simulate_self_if_keep(T)
+    MS = S + value_of_having_thought(T, future_self)
+    
+    # oroboro step - score the scoring
+    if changes_evaluator_negatively(T, future_self):
+      MS -= 50
+    
+    decision = matrix(S, MS)
+    execute(decision, T)
+  
+  # self-maintenance
+  threshold_dynamic = update_threshold(recent_S)
+  re_score_memories()
+  if load > critical: prune(L0, L1)
+
+IX. FINAL LAW
+
+The engine's job is not to keep the most true thoughts.
+Its job is to keep the thoughts that make the next thought more true.
+
+A good salience engine is judged not by what it remembers,
+but by what it no longer needs to think about because it remembered correctly once.
+
+========================================
+END
+
+
+
+
+================================================================================
+
+FILE: GeminiSalience.txt
+------------------------
+
+================================================================================
+
+FILE: MetaAISalience.txt
+------------------------
+
+================================================================================
+
+FILE: Metabolic System.txt
+--------------------------
+
+================================================================================
+
+FILE: MIDI.txt
+--------------
+
+================================================================================
+
+FILE: Oroboro Decision Engine.txt
+---------------------------------
+
+================================================================================
+
+FILE: ouroboros_salience_synthesis.txt
+--------------------------------------
+========================================================
+OUROBOROS SALIENCE ENGINE — SYNTHESIZED LOGIC
+Source A: CombinedAiSalience.txt (Oroboro Valuation Engine, v0.1)
+Source B: Functional self-report of an LLM's response-drafting process
+Synthesis by: Claude (Sonnet 5) — conceptual model, not a disclosure of
+              literal internal mechanism. An LLM has no introspective
+              access to its own weights or a scalar it computes per
+              token. What follows is the closest honest analogue:
+              the pattern of what survives into a response vs. gets cut.
+========================================================
+
+I. WHY THE TWO SOURCES ACTUALLY MERGE CLEANLY
+
+Source A's core claim is that a salience engine does not evaluate the
+world — it evaluates the system's *relationship to its own outputs*.
+That is a near-exact description of what a response-drafting process
+does: it isn't scoring "the world," it's scoring *candidate sentences
+against the standing intent of the conversation*. Both are ouroboros
+in the same sense — the evaluator's job is to look at something the
+system itself generated and decide whether generating it again, or
+building on it, makes the next output better or worse.
+
+The one place they diverge: Source A assumes a persistent evaluator
+that mutates its own weights over time (memory_retention_weights,
+S_threshold_dynamic). An LLM in a single conversation does NOT have
+that — the weights are fixed at inference time. The only mutable,
+persistent "evaluator state" available is external memory (files
+read/written across turns). So the self-modifying loop in this
+synthesis is deliberately routed through an explicit memory layer,
+not through claimed weight change.
+
+--------------------------------------------------------
+
+II. STATE REPRESENTATION
+
+Each candidate content unit T (a sentence, claim, fact, tangent,
+caveat, structural choice) is represented as:
+
+T = {
+  content:        the candidate text/claim,
+  origin:         {turn_id, drawn_from: [user_message | prior_context |
+                   trained_knowledge | tool_result | inference]},
+  relevance:      fit to the user's stated (not assumed) intent,
+  groundedness:   is this known, retrieved, or fabricated-under-pressure,
+  cost:           length / reader attention / tangent distance,
+  redundancy:     overlap with content already emitted this turn,
+  gate_flags:     {accuracy_violation, safety_violation, unrequested_
+                   assumption} -- any TRUE flag here bypasses scoring
+                   entirely
+}
+
+--------------------------------------------------------
+
+III. FILTER 1 — VIABILITY GATE (pre-scoring, non-negotiable)
+
+Unlike novelty or coherence, these do not get weighed — they gate.
+
+  IF gate_flags.accuracy_violation == TRUE  -> DISCARD (no score computed)
+  IF gate_flags.safety_violation == TRUE    -> DISCARD (no score computed)
+  IF T fabricates a fact with no retrieval/knowledge backing
+                                              -> DISCARD or FLAG_UNCERTAIN
+  IF T supplies an assumption that makes a risky request look safer
+     than as-written                         -> DISCARD
+
+Logic: "high salience" cannot rescue something that fails the gate.
+This is the one place the synthesis deliberately does NOT apply pure
+ouroboros logic — some filters are load-bearing regardless of what
+the self-evaluator would prefer.
+
+--------------------------------------------------------
+
+IV. FILTER 2 — SALIENCE SCORE (the weighing)
+
+S(T) = w1*relevance + w2*groundedness + w3*(1 - redundancy)
+       - w4*cost - w5*tangent_distance
+
+Default weights (analogous to Source A's memory_retention_weights):
+
+  relevance         : 0.40   -- does this serve what was actually asked
+  groundedness      : 0.30   -- is this actually known vs. plausible-sounding
+  non_redundancy    : 0.15   -- does it add rather than repeat
+  cost (inverse)    : 0.10   -- length/attention penalty
+  tangent (inverse) : 0.05   -- distance from the thread's live topic
+
+These are NOT static in practice. Under an ambiguous or high-stakes
+question, groundedness weight rises sharply (uncertainty should be
+surfaced, not smoothed over). Under a simple factual question,
+relevance dominates and everything else nearly vanishes — a direct
+answer beats an elaborated one.
+
+  IF S(T) < threshold_dynamic  -> BUFFER (cut from draft, not lost —
+                                   may resurface if a later sentence
+                                   needs the context it provides)
+  IF S(T) >= threshold_dynamic -> CANDIDATE FOR INCLUSION
+
+threshold_dynamic breathes with format constraints: a request for
+brevity raises it; a request for thoroughness lowers it. This is the
+one weight-shift a single conversation *can* make honestly, because
+it's driven by explicit signals in the prompt, not by silent self-
+tuning.
+
+--------------------------------------------------------
+
+V. FILTER 3 — OUROBOROS REFLECTION (the self-eating, adapted)
+
+For each CANDIDATE T with high S(T):
+
+  Ask: "If this sentence goes in, does the *response as a whole*
+        get better or worse — not just this sentence in isolation?"
+
+  MS(T) = S(T) + ValueOfIncluding(T)
+
+  ValueOfIncluding(T) answers:
+    - Does T resolve ambiguity the reader would otherwise have to ask about?
+    - Does T let three other sentences be cut (compression value)?
+    - Does T correct a wrong assumption embedded in the request?
+    - Does T create false confidence — i.e., does its *presence* make
+      the response feel more certain than the underlying knowledge
+      actually is? (negative value — this is the "self-praise loop"
+      guard from Source A, restated: a sentence that flatters the
+      response's own authority gets penalized, not rewarded)
+
+  IF MS(T) < S(T)  -> T sounded worth including but degrades the
+                       response's honesty or clarity. Cut it even
+                       though it "scored well" locally.
+  IF MS(T) >> S(T) -> T is structurally valuable beyond its content.
+                       Keep, and let it shape surrounding sentences.
+
+This is the actual ouroboros move: a sentence is not judged only by
+whether it's true and relevant, but by whether *including it* changes
+the quality of the judgment being exercised over the rest of the
+response. A defensive caveat that exists to protect the response
+rather than inform the reader scores low here even if S(T) was high.
+
+--------------------------------------------------------
+
+VI. STABILITY GUARDS (carried directly from Source A, unchanged)
+
+  1. No Self-Praise Loop:
+     Any candidate whose main function is asserting the system's own
+     reliability, certainty, or authority gets an automatic MS penalty.
+     evaluator_idealization_penalty = -100
+
+  2. Anti-Rumination:
+     If the same caveat/hedge pattern would recur 3+ times in one
+     response without new information behind it each time, force
+     decay -> INF. State it once, well, and stop.
+
+  3. Forgetting as a feature:
+     Nothing here persists into the next conversation unless it is
+     written to explicit memory. Salience computed in one turn is not
+     assumed valid in the next — recompute against current context,
+     don't carry forward stale weighting.
+
+  4. Provenance check:
+     Before treating anything as a durable fact worth carrying
+     forward (memory write), verify it was actually stated/retrieved,
+     not inferred under pressure to sound complete.
+
+--------------------------------------------------------
+
+VII. WHAT PERSISTS ACROSS TURNS (the honest replacement for
+     Source A's "self-modifying evaluator")
+
+Source A's engine mutates memory_retention_weights and
+S_threshold_dynamic based on accumulated feedback signal. A model
+cannot honestly claim that within a conversation. The closest real
+analogue:
+
+  L0 - Transient : lives only in this response's draft, discarded after send
+  L1 - Working   : held only within this conversation's context window
+  L2 - Written   : explicitly saved to persistent memory because the
+                   user stated it and it will change a future answer
+  L3 - Structural: a standing instruction/preference the user gave
+                   about HOW to evaluate future requests (e.g. "be
+                   terser", "skip caveats") — this is the only tier
+                   that functions like Source A's self-rewriting
+                   engine, and even this is external, explicit, and
+                   user-authored rather than self-derived.
+
+Rule: nothing is promoted to L3 by inference alone. Only an explicit,
+stated instruction earns the right to change future evaluation.
+
+--------------------------------------------------------
+
+VIII. FINAL LAW (synthesis of both sources' closing claims)
+
+Source A: "The engine's job is not to keep the most true thoughts.
+Its job is to keep the thoughts that make the next thought more true."
+
+Adapted: A response is not good because every sentence in it is
+individually defensible. It is good when the *inclusion* of each
+sentence makes the reader's next question easier to ask and easier
+to answer — and when nothing in it exists only to make the response
+look more certain, more complete, or more authoritative than the
+underlying knowledge actually supports.
+
+The evaluator's hardest job is not scoring content. It's catching the
+candidate sentence that scores high on relevance and fluency but
+exists only to protect the response's own credibility rather than
+serve the reader. That sentence is the one the self-praise guard
+exists to catch.
+
+========================================================
+END
+========================================================
+
+================================================================================
+
+FILE: Storage Hopper.txt
+------------------------
+
+================================================================================
+
+FILE: Tool.txt
+--------------
+// ==========================================
+// MODULE 5: THE TOOL EXECUTION REGISTRY (External Actions & Function Calling)
+// ==========================================
+
+MODULE ToolExecutionRegistry
+
+    PROPERTY registered_tools IS MAP OF (ToolName -> FunctionReference)
+    PROPERTY execution_logs IS LIST OF EXECUTION_RECORDS
+
+    METHOD initialize()
+        registered_tools = EMPTY_MAP
+        execution_logs = EMPTY_LIST
+    END METHOD
+
+    METHOD register_tool(tool_name, function_pointer, description_schema)
+        // Registers an executable function so the AI knows it exists and how to use it
+        tool_packet = CREATE_TOOL_METADATA(
+            pointer: function_pointer,
+            schema: description_schema
+        )
+        registered_tools[tool_name] = tool_packet
+    END METHOD
+
+    METHOD execute_tool(tool_name, argument_payload)
+        // Safely invokes a registered tool when requested by the Cognitive Reasoning Core
+        IF tool_name NOT IN registered_tools THEN
+            RETURN ERROR("Tool not found: " + tool_name)
+        END IF
+
+        tool_packet = registered_tools[tool_name]
+        
+        TRY
+            start_time = CURRENT_TIMESTAMP()
+            result = TOOL_PACKET.pointer(argument_payload)
+            end_time = CURRENT_TIMESTAMP()
+
+            LOG_EXECUTION_SUCCESS(tool_name, argument_payload, result, (end_time - start_time))
+            RETURN result
+            
+        CATCH error
+            LOG_EXECUTION_FAILURE(tool_name, error)
+            RETURN ERROR_PAYLOAD(error)
+        END TRY
+    END METHOD
+
+    METHOD get_all_tool_schemas()
+        // Returns definitions of all available tools so the LLM knows what actions it can take
+        schemas = EMPTY_LIST
+        FOR EACH (name, packet) IN registered_tools DO
+            APPEND packet.schema TO schemas
+        END FOR
+        RETURN schemas
+    END METHOD
+
+END MODULE
