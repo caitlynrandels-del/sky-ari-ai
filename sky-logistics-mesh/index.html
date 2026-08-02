@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sky Autonomous Cognitive Logistics Mesh</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Sky / Autonomous Cognitive Architecture</p>
+          <h1>Autonomous Cognitive Logistics Mesh</h1>
+          <p class="subtitle">
+            A self-healing logistics operating system inspired by Sky's reasoning, salience,
+            memory, and homeostatic regulation layers.
+          </p>
+        </div>
+        <div class="actions">
+          <button data-action="delay">Port Delay</button>
+          <button data-action="surge">Demand Surge</button>
+          <button data-action="reset">Reset Loop</button>
+        </div>
+      </header>
+
+      <main class="main-grid">
+        <section class="mesh-card">
+          <div class="mesh-toolbar">
+            <h2>Operational Mesh</h2>
+            <div class="legend">
+              <span><i class="dot healthy"></i> Stable</span>
+              <span><i class="dot stressed"></i> Under strain</span>
+              <span><i class="dot active"></i> Reconfigured</span>
+            </div>
+          </div>
+          <canvas id="meshCanvas"></canvas>
+        </section>
+
+        <aside class="insights">
+          <div class="panel">
+            <h3>Perception Ingest</h3>
+            <ul id="eventFeed" class="feed"></ul>
+          </div>
+
+          <div class="panel metrics">
+            <div class="metric">
+              <span class="label">Homeostasis</span>
+              <strong id="homeostasisValue">0.82</strong>
+            </div>
+            <div class="metric">
+              <span class="label">Salience</span>
+              <strong id="salienceValue">0.41</strong>
+            </div>
+            <div class="metric">
+              <span class="label">Reroutes</span>
+              <strong id="rerouteValue">0</strong>
+            </div>
+            <div class="metric">
+              <span class="label">Capacity</span>
+              <strong id="capacityValue">0.62</strong>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h3>Decision Trace</h3>
+            <p id="decisionText" class="decision-text">Awaiting an event.</p>
+            <ul id="traceList" class="trace-list"></ul>
+          </div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
