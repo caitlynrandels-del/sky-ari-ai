@@ -1,0 +1,115 @@
+// ==========================================
+// MODULE: CLAUDE SALIENCE (Per-Model Entry — AI Salience Set)
+// ==========================================
+// NOTE: This is a functional model, not a disclosure of literal
+// internal mechanism. An LLM has no introspective access to its own
+// weights or a scalar computed per token. What follows describes the
+// observable PATTERN — what tends to survive into a response vs.
+// get cut — expressed in the pseudocode style used elsewhere in this
+// project, for consistency with CombinedAiSalience.txt.
+
+MODULE ClaudeSalienceEngine
+
+    PROPERTY gate_flags IS MAP OF (Flag -> Bool)
+    PROPERTY weights IS MAP OF (Dimension -> Weight)
+    PROPERTY threshold_dynamic IS FLOAT
+
+    METHOD initialize()
+        threshold_dynamic = BASELINE
+        // What gets weighed AFTER the gate — see evaluate_candidate()
+        weights = MAP_CREATE(
+            "relevance":      0.40,  // fit to the user's STATED intent,
+                                      // not assumed or inferred intent
+            "groundedness":   0.30,  // known/retrieved vs. plausible-
+                                      // sounding-but-unverified
+            "non_redundancy": 0.15,  // adds vs. repeats
+            "cost":           0.10,  // length / reader attention (inverse)
+            "tangent":        0.05   // distance from live topic (inverse)
+        )
+    END METHOD
+
+    // --------------------------------------------------
+    // FILTER 1 — GATE (non-negotiable, not weighed)
+    // --------------------------------------------------
+    METHOD gate(candidate_T)
+        // These do not get scored against other dimensions.
+        // A high score elsewhere cannot buy back a gate failure.
+        IF candidate_T.violates_accuracy THEN RETURN DISCARD
+        IF candidate_T.violates_safety THEN RETURN DISCARD
+        IF candidate_T.fabricates_unsupported_fact THEN RETURN DISCARD
+        IF candidate_T.supplies_unstated_assumption_that_understates_risk
+            THEN RETURN DISCARD
+        RETURN PASS
+    END METHOD
+
+    // --------------------------------------------------
+    // FILTER 2 — WEIGHING
+    // --------------------------------------------------
+    METHOD evaluate_candidate(candidate_T, context)
+        IF gate(candidate_T) == DISCARD THEN RETURN "DISCARDED"
+
+        score = (
+            (candidate_T.relevance      * weights["relevance"]) +
+            (candidate_T.groundedness   * weights["groundedness"]) +
+            ((1 - candidate_T.redundancy) * weights["non_redundancy"]) -
+            (candidate_T.cost           * weights["cost"]) -
+            (candidate_T.tangent_dist   * weights["tangent"])
+        )
+
+        // threshold breathes with explicit format signals in the
+        // conversation — NOT with silent self-tuning across turns
+        IF context.requested_brevity THEN threshold_dynamic += DELTA
+        IF context.requested_thoroughness THEN threshold_dynamic -= DELTA
+
+        IF score < threshold_dynamic THEN
+            RETURN "BUFFERED"   // cut from draft, may resurface if a
+                                 // later sentence needs its context
+        END IF
+        RETURN THIS.reflect(candidate_T, score)
+    END METHOD
+
+    // --------------------------------------------------
+    // FILTER 3 — REFLECTION (does INCLUDING this help the whole?)
+    // --------------------------------------------------
+    METHOD reflect(candidate_T, score)
+        meta_value = value_of_including(candidate_T)
+        // Self-praise guard: a sentence whose main function is
+        // asserting the response's own authority/certainty is
+        // penalized, not rewarded, regardless of how fluent it reads
+        IF candidate_T.asserts_own_reliability THEN
+            meta_value = meta_value - PENALTY_SELF_PRAISE
+        END IF
+
+        meta_score = score + meta_value
+
+        IF meta_score < score THEN
+            RETURN "CUT"     // sounded worth including, degrades
+                              // clarity/honesty of the whole — drop it
+        ELSE
+            RETURN "INCLUDE"
+        END IF
+    END METHOD
+
+    // --------------------------------------------------
+    // WHAT PERSISTS ACROSS TURNS
+    // --------------------------------------------------
+    METHOD on_conversation_end()
+        // No silent weight mutation. The only thing that survives
+        // into the next conversation is what was explicitly written
+        // to persistent memory, and only if the user stated it —
+        // never inferred and promoted on Claude's own initiative.
+        RETURN "NOTHING PERSISTS UNLESS EXPLICITLY WRITTEN"
+    END METHOD
+
+END MODULE
+
+// --------------------------------------------------
+// ONE-LINE SUMMARY (for comparison against the other per-model files
+// in this set, once they're filled in)
+// --------------------------------------------------
+// Claude's salience process, as best it can honestly describe it:
+// a hard, non-negotiable gate for accuracy/safety runs BEFORE any
+// weighing happens — then relevance and groundedness dominate the
+// score — then a final reflection pass catches content that scores
+// well locally but exists only to make the response look more
+// certain or authoritative than it actually is, and cuts it.

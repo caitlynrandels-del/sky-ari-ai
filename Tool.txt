@@ -1,0 +1,55 @@
+// ==========================================
+// MODULE 5: THE TOOL EXECUTION REGISTRY (External Actions & Function Calling)
+// ==========================================
+
+MODULE ToolExecutionRegistry
+
+    PROPERTY registered_tools IS MAP OF (ToolName -> FunctionReference)
+    PROPERTY execution_logs IS LIST OF EXECUTION_RECORDS
+
+    METHOD initialize()
+        registered_tools = EMPTY_MAP
+        execution_logs = EMPTY_LIST
+    END METHOD
+
+    METHOD register_tool(tool_name, function_pointer, description_schema)
+        // Registers an executable function so the AI knows it exists and how to use it
+        tool_packet = CREATE_TOOL_METADATA(
+            pointer: function_pointer,
+            schema: description_schema
+        )
+        registered_tools[tool_name] = tool_packet
+    END METHOD
+
+    METHOD execute_tool(tool_name, argument_payload)
+        // Safely invokes a registered tool when requested by the Cognitive Reasoning Core
+        IF tool_name NOT IN registered_tools THEN
+            RETURN ERROR("Tool not found: " + tool_name)
+        END IF
+
+        tool_packet = registered_tools[tool_name]
+        
+        TRY
+            start_time = CURRENT_TIMESTAMP()
+            result = TOOL_PACKET.pointer(argument_payload)
+            end_time = CURRENT_TIMESTAMP()
+
+            LOG_EXECUTION_SUCCESS(tool_name, argument_payload, result, (end_time - start_time))
+            RETURN result
+            
+        CATCH error
+            LOG_EXECUTION_FAILURE(tool_name, error)
+            RETURN ERROR_PAYLOAD(error)
+        END TRY
+    END METHOD
+
+    METHOD get_all_tool_schemas()
+        // Returns definitions of all available tools so the LLM knows what actions it can take
+        schemas = EMPTY_LIST
+        FOR EACH (name, packet) IN registered_tools DO
+            APPEND packet.schema TO schemas
+        END FOR
+        RETURN schemas
+    END METHOD
+
+END MODULE

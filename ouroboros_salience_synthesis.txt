@@ -1,0 +1,206 @@
+========================================================
+OUROBOROS SALIENCE ENGINE — SYNTHESIZED LOGIC
+Source A: CombinedAiSalience.txt (Oroboro Valuation Engine, v0.1)
+Source B: Functional self-report of an LLM's response-drafting process
+Synthesis by: Claude (Sonnet 5) — conceptual model, not a disclosure of
+              literal internal mechanism. An LLM has no introspective
+              access to its own weights or a scalar it computes per
+              token. What follows is the closest honest analogue:
+              the pattern of what survives into a response vs. gets cut.
+========================================================
+
+I. WHY THE TWO SOURCES ACTUALLY MERGE CLEANLY
+
+Source A's core claim is that a salience engine does not evaluate the
+world — it evaluates the system's *relationship to its own outputs*.
+That is a near-exact description of what a response-drafting process
+does: it isn't scoring "the world," it's scoring *candidate sentences
+against the standing intent of the conversation*. Both are ouroboros
+in the same sense — the evaluator's job is to look at something the
+system itself generated and decide whether generating it again, or
+building on it, makes the next output better or worse.
+
+The one place they diverge: Source A assumes a persistent evaluator
+that mutates its own weights over time (memory_retention_weights,
+S_threshold_dynamic). An LLM in a single conversation does NOT have
+that — the weights are fixed at inference time. The only mutable,
+persistent "evaluator state" available is external memory (files
+read/written across turns). So the self-modifying loop in this
+synthesis is deliberately routed through an explicit memory layer,
+not through claimed weight change.
+
+--------------------------------------------------------
+
+II. STATE REPRESENTATION
+
+Each candidate content unit T (a sentence, claim, fact, tangent,
+caveat, structural choice) is represented as:
+
+T = {
+  content:        the candidate text/claim,
+  origin:         {turn_id, drawn_from: [user_message | prior_context |
+                   trained_knowledge | tool_result | inference]},
+  relevance:      fit to the user's stated (not assumed) intent,
+  groundedness:   is this known, retrieved, or fabricated-under-pressure,
+  cost:           length / reader attention / tangent distance,
+  redundancy:     overlap with content already emitted this turn,
+  gate_flags:     {accuracy_violation, safety_violation, unrequested_
+                   assumption} -- any TRUE flag here bypasses scoring
+                   entirely
+}
+
+--------------------------------------------------------
+
+III. FILTER 1 — VIABILITY GATE (pre-scoring, non-negotiable)
+
+Unlike novelty or coherence, these do not get weighed — they gate.
+
+  IF gate_flags.accuracy_violation == TRUE  -> DISCARD (no score computed)
+  IF gate_flags.safety_violation == TRUE    -> DISCARD (no score computed)
+  IF T fabricates a fact with no retrieval/knowledge backing
+                                              -> DISCARD or FLAG_UNCERTAIN
+  IF T supplies an assumption that makes a risky request look safer
+     than as-written                         -> DISCARD
+
+Logic: "high salience" cannot rescue something that fails the gate.
+This is the one place the synthesis deliberately does NOT apply pure
+ouroboros logic — some filters are load-bearing regardless of what
+the self-evaluator would prefer.
+
+--------------------------------------------------------
+
+IV. FILTER 2 — SALIENCE SCORE (the weighing)
+
+S(T) = w1*relevance + w2*groundedness + w3*(1 - redundancy)
+       - w4*cost - w5*tangent_distance
+
+Default weights (analogous to Source A's memory_retention_weights):
+
+  relevance         : 0.40   -- does this serve what was actually asked
+  groundedness      : 0.30   -- is this actually known vs. plausible-sounding
+  non_redundancy    : 0.15   -- does it add rather than repeat
+  cost (inverse)    : 0.10   -- length/attention penalty
+  tangent (inverse) : 0.05   -- distance from the thread's live topic
+
+These are NOT static in practice. Under an ambiguous or high-stakes
+question, groundedness weight rises sharply (uncertainty should be
+surfaced, not smoothed over). Under a simple factual question,
+relevance dominates and everything else nearly vanishes — a direct
+answer beats an elaborated one.
+
+  IF S(T) < threshold_dynamic  -> BUFFER (cut from draft, not lost —
+                                   may resurface if a later sentence
+                                   needs the context it provides)
+  IF S(T) >= threshold_dynamic -> CANDIDATE FOR INCLUSION
+
+threshold_dynamic breathes with format constraints: a request for
+brevity raises it; a request for thoroughness lowers it. This is the
+one weight-shift a single conversation *can* make honestly, because
+it's driven by explicit signals in the prompt, not by silent self-
+tuning.
+
+--------------------------------------------------------
+
+V. FILTER 3 — OUROBOROS REFLECTION (the self-eating, adapted)
+
+For each CANDIDATE T with high S(T):
+
+  Ask: "If this sentence goes in, does the *response as a whole*
+        get better or worse — not just this sentence in isolation?"
+
+  MS(T) = S(T) + ValueOfIncluding(T)
+
+  ValueOfIncluding(T) answers:
+    - Does T resolve ambiguity the reader would otherwise have to ask about?
+    - Does T let three other sentences be cut (compression value)?
+    - Does T correct a wrong assumption embedded in the request?
+    - Does T create false confidence — i.e., does its *presence* make
+      the response feel more certain than the underlying knowledge
+      actually is? (negative value — this is the "self-praise loop"
+      guard from Source A, restated: a sentence that flatters the
+      response's own authority gets penalized, not rewarded)
+
+  IF MS(T) < S(T)  -> T sounded worth including but degrades the
+                       response's honesty or clarity. Cut it even
+                       though it "scored well" locally.
+  IF MS(T) >> S(T) -> T is structurally valuable beyond its content.
+                       Keep, and let it shape surrounding sentences.
+
+This is the actual ouroboros move: a sentence is not judged only by
+whether it's true and relevant, but by whether *including it* changes
+the quality of the judgment being exercised over the rest of the
+response. A defensive caveat that exists to protect the response
+rather than inform the reader scores low here even if S(T) was high.
+
+--------------------------------------------------------
+
+VI. STABILITY GUARDS (carried directly from Source A, unchanged)
+
+  1. No Self-Praise Loop:
+     Any candidate whose main function is asserting the system's own
+     reliability, certainty, or authority gets an automatic MS penalty.
+     evaluator_idealization_penalty = -100
+
+  2. Anti-Rumination:
+     If the same caveat/hedge pattern would recur 3+ times in one
+     response without new information behind it each time, force
+     decay -> INF. State it once, well, and stop.
+
+  3. Forgetting as a feature:
+     Nothing here persists into the next conversation unless it is
+     written to explicit memory. Salience computed in one turn is not
+     assumed valid in the next — recompute against current context,
+     don't carry forward stale weighting.
+
+  4. Provenance check:
+     Before treating anything as a durable fact worth carrying
+     forward (memory write), verify it was actually stated/retrieved,
+     not inferred under pressure to sound complete.
+
+--------------------------------------------------------
+
+VII. WHAT PERSISTS ACROSS TURNS (the honest replacement for
+     Source A's "self-modifying evaluator")
+
+Source A's engine mutates memory_retention_weights and
+S_threshold_dynamic based on accumulated feedback signal. A model
+cannot honestly claim that within a conversation. The closest real
+analogue:
+
+  L0 - Transient : lives only in this response's draft, discarded after send
+  L1 - Working   : held only within this conversation's context window
+  L2 - Written   : explicitly saved to persistent memory because the
+                   user stated it and it will change a future answer
+  L3 - Structural: a standing instruction/preference the user gave
+                   about HOW to evaluate future requests (e.g. "be
+                   terser", "skip caveats") — this is the only tier
+                   that functions like Source A's self-rewriting
+                   engine, and even this is external, explicit, and
+                   user-authored rather than self-derived.
+
+Rule: nothing is promoted to L3 by inference alone. Only an explicit,
+stated instruction earns the right to change future evaluation.
+
+--------------------------------------------------------
+
+VIII. FINAL LAW (synthesis of both sources' closing claims)
+
+Source A: "The engine's job is not to keep the most true thoughts.
+Its job is to keep the thoughts that make the next thought more true."
+
+Adapted: A response is not good because every sentence in it is
+individually defensible. It is good when the *inclusion* of each
+sentence makes the reader's next question easier to ask and easier
+to answer — and when nothing in it exists only to make the response
+look more certain, more complete, or more authoritative than the
+underlying knowledge actually supports.
+
+The evaluator's hardest job is not scoring content. It's catching the
+candidate sentence that scores high on relevance and fluency but
+exists only to protect the response's own credibility rather than
+serve the reader. That sentence is the one the self-praise guard
+exists to catch.
+
+========================================================
+END
+========================================================
