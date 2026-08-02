@@ -1,0 +1,41 @@
+SKY AUTONOMOUS COGNITIVE LOGISTICS MESH
+
+This file captures the structural plan for a logistics intelligence system built from the Sky architecture.
+
+Core idea
+- Treat the supply chain as a living cognitive mesh rather than a static database.
+- Each physical asset becomes a node with state, health, capacity, and load.
+- Synapses represent the decision pathways between nodes.
+
+Operating layers
+1. Perception / Ingestion
+   - Normalize incoming signals from suppliers, ports, warehouses, vessels, and retail nodes.
+   - Convert fragmented data into a consistent state model.
+
+2. Salience Scoring
+   - Evaluate urgency, cost, risk, and downstream impact.
+   - Prioritize the most important disruptions before the network reacts.
+
+3. Decision Core
+   - Choose between rerouting, buffering, shedding load, or slowing throughput.
+   - Prefer resilient continuity over brittle speed.
+
+4. Memory / Storage
+   - Record recent events, decisions, and outcomes so the mesh can learn from prior disruptions.
+
+5. Homeostasis / Regulation
+   - Maintain system stability by balancing flow, stress, and recovery.
+   - Keep the network from collapsing under repeated strain.
+
+6. Principle Gate
+   - Apply the Sky values of continuity, explainability, and resilience as a final check.
+
+Operating loop
+- Observe
+- Score salience
+- Decide
+- Reconfigure
+- Remember
+- Restore balance
+
+This structure is what the prototype now implements as a web-based cognitive mesh.
