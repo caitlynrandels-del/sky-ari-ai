@@ -1,0 +1,83 @@
+// ==========================================
+// ALL.TXT — MASTER INDEX OF ALL MODULES
+// Repository: sky-ari-ai
+// ==========================================
+// This file links all module and synthesis files in this project.
+// Each entry references a file and provides a brief description.
+// ==========================================
+
+// --------------------------------------------------
+// AI SALIENCE MODULES (Per-Model)
+// --------------------------------------------------
+
+FILE: ClaudeSalience.txt
+    MODULE: ClaudeSalienceEngine
+    DESCRIPTION: Salience model for Claude — hard gate (accuracy/safety)
+                 followed by relevance/groundedness weighting and a
+                 self-praise-penalizing reflection pass.
+
+FILE: ChatGPTSalience.txt
+    MODULE: (pending)
+    DESCRIPTION: Per-model salience entry for ChatGPT.
+
+FILE: GeminiSalience.txt
+    MODULE: (pending)
+    DESCRIPTION: Per-model salience entry for Gemini.
+
+FILE: MetaAISalience.txt
+    MODULE: (pending)
+    DESCRIPTION: Per-model salience entry for Meta AI.
+
+// --------------------------------------------------
+// COMBINED & SYNTHESIS FILES
+// --------------------------------------------------
+
+FILE: CombinedAiSalience.txt
+    MODULE: OroboroSalienceEngine (v0.1)
+    DESCRIPTION: The Oroboro Salience & Evaluation Engine — internal
+                 valuation core that evaluates the system's relationship
+                 to its own outputs using composite salience scoring
+                 (novelty, tension alignment, structural coherence,
+                 emotional resonance).
+
+FILE: ouroboros_salience_synthesis.txt
+    MODULE: (synthesis document)
+    DESCRIPTION: Synthesized logic merging CombinedAiSalience.txt with
+                 functional self-report of an LLM's response-drafting
+                 process. Clarifies where persistent self-modification
+                 is routed through external memory rather than weight change.
+
+// --------------------------------------------------
+// CORE SYSTEM MODULES
+// --------------------------------------------------
+
+FILE: Cognitive Reasoning Core.txt
+    MODULE: (pending)
+    DESCRIPTION: Core cognitive reasoning system module.
+
+FILE: Metabolic System.txt
+    MODULE: (pending)
+    DESCRIPTION: Metabolic system module.
+
+FILE: Oroboro Decision Engine.txt
+    MODULE: (pending)
+    DESCRIPTION: Oroboro decision engine module.
+
+FILE: Storage Hopper.txt
+    MODULE: (pending)
+    DESCRIPTION: Storage hopper — stages and flushes high-salience
+                 thoughts to long-term vector memory.
+
+FILE: Tool.txt
+    MODULE: ToolExecutionRegistry (Module 5)
+    DESCRIPTION: Tool Execution Registry — registers and safely invokes
+                 external functions/actions called by the Cognitive
+                 Reasoning Core.
+
+FILE: MIDI.txt
+    MODULE: (pending)
+    DESCRIPTION: MIDI system module.
+
+// ==========================================
+// END OF INDEX
+// ==========================================
