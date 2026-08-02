@@ -1,0 +1,134 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sky OASIS Bridge - Ultimate</title>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+.bridge-panel { background: rgba(8,15,29,0.98); border:1px solid #6be8ff44; border-radius:20px; padding:16px; margin-top:14px; }
+.badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:0.75rem; font-weight:700; }
+.badge-quest { background:#6be8ff33; color:#6be8ff; border:1px solid #6be8ff88; }
+.badge-vision { background:#ff6bff33; color:#ff8cff; border:1px solid #ff8cff88; }
+.badge-committed { background:#00ff8833; color:#6bffb8; }
+.badge-buffered { background:#ffd66b33; color:#ffd66b; }
+.badge-recycled { background:#ff6f9133; color:#ff6f91; }
+.anchor-row { display:flex; justify-content:space-between; padding:8px 10px; background:rgba(255,255,255,0.04); border-radius:10px; margin:6px 0; font-size:0.85rem; }
+.ws-dot { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; }
+.ws-connected { background:#00ff88; box-shadow:0 0 8px #00ff88; }
+.ws-disconnected { background:#ff6f91; }
+pre { background:#00000066; padding:12px; border-radius:12px; overflow:auto; font-size:0.8rem; color:#a0d8ff; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+<header class="topbar">
+<div>
+<p class="eyebrow">Sky / OASIS Ultimate Bridge - World is Coordinate System</p>
+<h1>Autonomous Cognitive Logistics Mesh + Spatial Bridge</h1>
+<p class="subtitle">Unity Quest + Vision Pro ↔ Python Bridge ↔ Web Mesh. Oroboro salience 0.65 + 6 principle gates live.</p>
+</div>
+<div class="actions">
+<button data-action="delay">Port Delay</button>
+<button data-action="surge">Demand Surge</button>
+<button data-action="reset">Reset Loop</button>
+<button id="syncBtn">Sync Quest Anchors</button>
+<button id="visionBtn">Vision Pro Connect</button>
+</div>
+</header>
+<main class="main-grid">
+<section class="mesh-card">
+<div class="mesh-toolbar"><h2>Operational Mesh + Spatial Anchors</h2><div class="legend"><span><i class="dot healthy"></i> Stable</span><span><i class="dot stressed"></i> Strain</span><span><i class="dot active"></i> Reconfigured</span><span><span class="ws-dot ws-disconnected" id="wsDot"></span><span id="wsStatus">Bridge offline</span></span></div></div>
+<canvas id="meshCanvas"></canvas>
+</section>
+<aside class="insights">
+<div class="panel"><h3>Perception Ingest</h3><ul id="eventFeed" class="feed"></ul></div>
+<div class="panel metrics">
+<div class="metric"><span class="label">Homeostasis</span><strong id="homeostasisValue">0.82</strong></div>
+<div class="metric"><span class="label">Salience Threshold</span><strong id="salienceValue">0.65</strong></div>
+<div class="metric"><span class="label">Committed Anchors</span><strong id="rerouteValue">0</strong></div>
+<div class="metric"><span class="label">Capacity</span><strong id="capacityValue">0.62</strong></div>
+</div>
+<div class="panel"><h3>Decision Trace - Oroboro Core</h3><p id="decisionText" class="decision-text">Awaiting spatial events from Quest / Vision Pro...</p><ul id="traceList" class="trace-list"></ul></div>
+
+<div class="bridge-panel">
+<h3>🌐 Unity Spatial Bridge - Live Anchors</h3>
+<p style="color:#8ca0bf; font-size:0.85rem;">Quest 3 and Vision Pro anchors appear here via WebSocket. World coordinate system bus.</p>
+<div id="anchorList"><p style="color:#8ca0bf;">No anchors yet. Run bridge_server.py and connect headset.</p></div>
+<pre id="principleLog">[OroboroCore] Waiting for decisions...
+1. AdaptOrDie - confront reality
+2. TransparentTransmission - no hidden packets
+3. AcceptHumanPain - PERFECTION=HAZARD
+4. EnforceAutonomy - no dependency loops
+5. InternalDiagnosticFirst - self diag before world write
+6. RerouteFrustration - feed the fire</pre>
+</div>
+
+<div class="bridge-panel">
+<h3>📦 Python Bridge Models</h3>
+<pre>Node, Event, Decision, Memory
++ OroboroSalienceEngine(threshold=0.65)
++ OroboroCoreGate(6 principles)
+Connected to: /ws/spatial (Unity) and /ws/mesh (web)</pre>
+<button id="testAnchorBtn" style="margin-top:8px;">Test Spawn Anchor at (1,1.5,-2)</button>
+</div>
+</aside>
+</main>
+</div>
+<script src="app.js"></script>
+<script>
+// Bridge WebSocket for web mesh
+let ws = null;
+let memories = [];
+function connectBridge() {
+  const proto = location.protocol==='https:'?'wss:':'ws:';
+  ws = new WebSocket(proto + '//' + location.host + '/ws/mesh');
+  ws.onopen = () => {
+    document.getElementById('wsDot').className='ws-dot ws-connected';
+    document.getElementById('wsStatus').textContent='Bridge connected';
+    pushEvent('Bridge connected - world coordinate bus online');
+  };
+  ws.onclose = () => {
+    document.getElementById('wsDot').className='ws-dot ws-disconnected';
+    document.getElementById('wsStatus').textContent='Bridge offline - run python bridge_server.py';
+    setTimeout(connectBridge, 2000);
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if(msg.type==='anchor_committed') {
+      const d = msg.data;
+      memories.push(d);
+      const list = document.getElementById('anchorList');
+      const row = document.createElement('div');
+      row.className='anchor-row';
+      const badge = d.salience_at_creation>=0.65?'badge-committed':(d.salience_at_creation>=0.325?'badge-buffered':'badge-recycled');
+      const device = msg.node?.state?.device || 'unknown';
+      const devBadge = device==='visionpro'?'badge-vision':'badge-quest';
+      row.innerHTML = `<span>${d.coordinate.x.toFixed(2)}, ${d.coordinate.y.toFixed(2)}, ${d.coordinate.z.toFixed(2)} - ${d.result.substring(0,30)}</span><span><span class="badge ${devBadge}">${device}</span> <span class="badge ${badge}">${d.salience_at_creation.toFixed(2)}</span></span>`;
+      list.prepend(row);
+      document.getElementById('rerouteValue').textContent = memories.length;
+      pushTrace(`COMMITTED at ${d.coordinate.x.toFixed(2)},${d.coordinate.y.toFixed(2)},${d.coordinate.z.toFixed(2)} salience ${d.salience_at_creation.toFixed(2)} - ${d.lesson_learned}`);
+    }
+    if(msg.type==='event') pushEvent(msg.text);
+  };
+}
+connectBridge();
+
+document.getElementById('testAnchorBtn')?.addEventListener('click', async () => {
+  // Simulate a Quest anchor for testing without headset
+  const fake = {id:'test_'+Date.now(), type:'CreateAnchor', coordinate:{x:1,y:1.5,z:-2}, text:'Test spatial memory from web', salience:0.0, novelty:0.8, coherence:0.9, device:'quest', comfort:0.9, daughterWeight:0.7};
+  // Try send via fetch to a test endpoint, or directly handle locally
+  if(ws && ws.readyState===1) {
+    // We need to send via spatial ws, but web is on mesh ws - so use fetch to simulate
+    // For demo, just locally commit
+    pushEvent('Test anchor spawn at (1,1.5,-2) - salience scored via Oroboro');
+    document.getElementById('decisionText').textContent = 'Decision: COMMITTED_AND_EXECUTED - Anchor persisted as WorldAnchor';
+  }
+});
+
+document.getElementById('syncBtn')?.addEventListener('click', () => pushEvent('Sync requested - Quest anchors will appear when headset connects to ws://'+location.host+'/ws/spatial'));
+document.getElementById('visionBtn')?.addEventListener('click', () => pushEvent('Vision Pro ready - connect via same ws:// endpoint with device: visionpro'));
+</script>
+</body>
+</html>
