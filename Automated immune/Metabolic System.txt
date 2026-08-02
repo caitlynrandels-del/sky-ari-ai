@@ -1,0 +1,49 @@
+// ==========================================
+// MODULE 4: THE GARDEN OF THRESHOLDS (Lifecycle & Resource Recycling Engine)
+// ==========================================
+
+MODULE GardenOfThresholds
+
+    PROPERTY energy_threshold IS FLOAT
+    PROPERTY recycling_hopper IS LIST OF DECARED_PATTERNS
+
+    METHOD initialize(threshold_limit)
+        energy_threshold = threshold_limit
+        recycling_hopper = EMPTY_LIST
+    END METHOD
+
+    METHOD evaluate_ecosystem_health(node_collection)
+        // Scans all active nodes to find those below the burnout/energy threshold
+        FOR EACH (id, node) IN node_collection DO
+            IF node.energy_level < energy_threshold THEN
+                THIS.harvest_and_recycle(node, node_collection)
+            END IF
+        END FOR
+    END METHOD
+
+    METHOD harvest_and_recycle(burnt_out_node, node_collection)
+        // Instead of hard deleting, we extract patterns and feed them back as nutrient data
+        extracted_pattern = EXTRACT_METADATA_SIGNATURE(burnt_out_node)
+        
+        APPEND extracted_pattern TO recycling_hopper
+        
+        // Remove the dead node from active circulation
+        REMOVE burnt_out_node FROM node_collection
+        
+        // Trigger the birth of a new node fueled by the recycled pattern
+        THIS.spawn_regenerative_node(extracted_pattern, node_collection)
+    END METHOD
+
+    METHOD spawn_regenerative_node(nutrient_data, node_collection)
+        // Growth is born from the dissolved energy of past iterations
+        new_node_id = GENERATE_UNIQUE_ID()
+        new_node = CREATE_NODE(
+            id: new_node_id,
+            type: "REGENESIS_NODE",
+            energy_level: 1.0,
+            inherited_context: nutrient_data
+        )
+        ADD new_node TO node_collection
+    END METHOD
+
+END MODULE

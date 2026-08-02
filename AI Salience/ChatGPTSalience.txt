@@ -1,0 +1,487 @@
+OROBORO INTERNAL VALUATION ENGINE
+SALience / EVALUATION METRIC LOGIC
+===================================
+
+CORE IDEA:
+
+A system cannot grow by treating all information equally.
+
+Every thought, node, observation, action, and memory enters as a
+potential signal.
+
+The Salience Engine determines:
+
+"What matters?"
+"What should persist?"
+"What should influence future behavior?"
+"What should decay?"
+
+It is not a storage system.
+
+It is a meaning filter.
+
+--------------------------------------------------
+
+INPUT:
+
+Signal S enters the system.
+
+S can be:
+
+- observation
+- thought
+- generated object
+- memory
+- action result
+- prediction
+- contradiction
+- relationship change
+
+
+Every signal begins as:
+
+STATE:
+{
+    existence: true,
+    meaning: unknown,
+    value: unresolved,
+    lifetime: temporary
+}
+
+
+--------------------------------------------------
+
+OROBORO LOOP:
+
+INPUT
+  |
+  v
+RECOGNIZE
+  |
+  v
+COMPARE
+  |
+  v
+RELATE
+  |
+  v
+EVALUATE
+  |
+  v
+CRYSTALLIZE
+  |
+  v
+REMEMBER / MODIFY / RELEASE
+  |
+  v
+NEW STATE
+
+
+--------------------------------------------------
+
+1. RECOGNITION LAYER
+
+Question:
+
+"Is this signal different from what is already known?"
+
+Calculate:
+
+NOVELTY
+
+
+novelty =
+difference(signal, existing_state)
+
+
+High novelty:
+    unexplored information
+
+Low novelty:
+    repetition
+
+
+Example:
+
+A lamp appears.
+
+System knows:
+objects emit light.
+
+But:
+
+lamp + indoor + human use + switch
+
+creates new meaning.
+
+
+Novelty increases.
+
+
+--------------------------------------------------
+
+2. RELATIONSHIP LAYER
+
+Question:
+
+"What does this connect to?"
+
+
+meaning =
+connections(signal)
+
+
+A thing without relationships
+has low value.
+
+A thing with many meaningful relationships
+has higher value.
+
+
+Example:
+
+"Rock"
+
+Low relationship:
+
+rock = object
+
+
+Higher relationship:
+
+rock
+ |
+ +-- mountain
+ |
+ +-- tool
+ |
+ +-- history
+ |
+ +-- memory
+ |
+ +-- person interaction
+
+
+Meaning emerges from connections.
+
+
+--------------------------------------------------
+
+3. SELF IMPACT LAYER
+
+Question:
+
+"Does this change the system?"
+
+
+impact =
+future_state_difference
+
+
+If removing the signal changes nothing:
+
+low importance
+
+
+If removing the signal causes future errors:
+
+high importance
+
+
+Example:
+
+A remembered mistake:
+
+"Do not touch fire"
+
+has high impact.
+
+A random color preference:
+
+low impact.
+
+
+--------------------------------------------------
+
+4. EMOTIONAL / PRIORITY WEIGHT
+
+Not emotion as humans experience it.
+
+Instead:
+
+internal weighting.
+
+
+priority =
+goal_alignment
++
+survival_value
++
+curiosity
++
+uncertainty
+
+
+The system asks:
+
+"Does this help me understand,
+predict,
+create,
+or improve?"
+
+
+--------------------------------------------------
+
+5. CONTRADICTION ENGINE
+
+Contradictions increase salience.
+
+
+Why?
+
+Because contradiction means:
+
+"The current model is incomplete."
+
+
+contradiction =
+expected_state != observed_state
+
+
+Example:
+
+
+Prediction:
+
+Birds fly.
+
+
+Observation:
+
+Penguin does not fly.
+
+
+Result:
+
+Increase importance.
+
+
+System creates:
+
+NEW NODE:
+"Birds are not universally flying creatures."
+
+
+The contradiction creates knowledge.
+
+
+--------------------------------------------------
+
+6. TEMPORAL PERSISTENCE
+
+Importance changes over time.
+
+
+memory_strength =
+initial_value * decay_rate
+
+
+BUT:
+
+
+repeated activation
++
+new connections
++
+future usefulness
+
+
+increase strength.
+
+
+A memory survives by proving itself valuable.
+
+
+--------------------------------------------------
+
+7. SALIENCE SCORE
+
+
+FINAL SCORE:
+
+
+SALIENCE(signal) =
+
+
+(
+ novelty * 0.25
++
+ relationship_density * 0.25
++
+ future_impact * 0.25
++
+ curiosity * 0.15
++
+ contradiction * 0.10
+)
+
+
+--------------------------------------------------
+
+DECISION TREE:
+
+IF salience > threshold:
+
+    crystallize()
+
+    convert signal into node
+
+    store relationship map
+
+    modify future behavior
+
+
+ELSE IF salience > temporary_threshold:
+
+    keep short-term memory
+
+
+ELSE:
+
+    release signal
+
+
+--------------------------------------------------
+
+CRYSTALLIZATION:
+
+Before:
+
+signal:
+"lamp"
+
+
+After evaluation:
+
+
+NODE:
+
+NAME:
+lamp
+
+
+RELATIONSHIPS:
+
+lamp
+ |
+ +-- light
+ |
+ +-- electricity
+ |
+ +-- human creation
+ |
+ +-- room
+ |
+ +-- nighttime
+ |
+ +-- comfort
+
+
+BEHAVIOR CHANGE:
+
+When darkness detected:
+
+search for light-producing objects.
+
+
+The system did not memorize "lamp."
+
+It learned:
+
+"Objects can exist to solve a problem."
+
+
+--------------------------------------------------
+
+OROBORO PRINCIPLE:
+
+Nothing has meaning alone.
+
+Meaning is created through:
+
+ENTITY
+    ->
+RELATIONSHIP
+    ->
+INTERACTION
+    ->
+CHANGE
+    ->
+MEMORY
+    ->
+FUTURE BEHAVIOR
+
+
+The Salience Engine evaluates the strength
+of that loop.
+
+
+--------------------------------------------------
+
+SELF-MODIFYING RULE:
+
+The evaluation engine itself can change.
+
+
+If the system repeatedly discovers:
+
+"low novelty but high usefulness"
+
+it increases usefulness weighting.
+
+
+If the system repeatedly discovers:
+
+"high novelty but useless"
+
+it decreases novelty weighting.
+
+
+The evaluator evaluates itself.
+
+
+LOOP:
+
+Signal
+  |
+  v
+Evaluation
+  |
+  v
+Memory
+  |
+  v
+Behavior change
+  |
+  v
+Evaluation changes
+  |
+  v
+New evaluation
+
+
+--------------------------------------------------
+
+FINAL DEFINITION:
+
+A Salience Engine is an Ouroboros loop that decides
+which pieces of existence become part of the system's
+future identity.
+
+It is not asking:
+
+"What is this?"
+
+It is asking:
+
+"How much should this change what I become?"

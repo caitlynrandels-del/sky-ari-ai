@@ -1,0 +1,79 @@
+// ==========================================
+// MODULE 7: THE OROBORO SALIENCE & EVALUATION ENGINE (Internal Valuation Core)
+// ==========================================
+
+MODULE OroboroSalienceEngine
+
+    PROPERTY valuation_threshold IS FLOAT
+    PROPERTY active_thought_hopper IS LIST OF GENERATED_STATES
+    PROPERTY memory_retention_weights IS MAP OF (Dimension -> Weight)
+
+    METHOD initialize()
+        valuation_threshold = 0.65
+        active_thought_hopper = EMPTY_LIST
+        // Weights determine what the system inherently "cares about"
+        memory_retention_weights = MAP_CREATE(
+            "novelty": 0.30,
+            "tension_alignment": 0.25,
+            "structural_coherence": 0.25,
+            "emotional_resonance": 0.20
+        )
+    END METHOD
+
+    METHOD evaluate_internal_thought(generated_node_action, current_environmental_vector)
+        // Evaluates the system's own generated states/actions rather than raw external input
+        
+        novelty_score = CALCULATE_DISTANCE_FROM_EXISTING_MEMORIES(generated_node_action)
+        tension_fit = EVALUATE_TENSION_HARMONY(generated_node_action, current_environmental_vector.tension)
+        coherence_score = MEASURE_NETWORK_INTEGRITY(generated_node_action)
+        resonance_score = CHECK_DAUGHTER_CONNECTION_WEIGHT(generated_node_action) // Core lineage check
+
+        // Calculate final composite salience score
+        salience_score = (
+            (novelty_score * memory_retention_weights["novelty"]) +
+            (tension_fit * memory_retention_weights["tension_alignment"]) +
+            (coherence_score * memory_retention_weights["structural_coherence"]) +
+            (resonance_score * memory_retention_weights["emotional_resonance"])
+        )
+
+        RETURN THIS.route_valuation_decision(generated_node_action, salience_score)
+    END METHOD
+
+    METHOD route_valuation_decision(thought_action, score)
+        // Decides what is worth keeping, remembering, or acting upon based on the score threshold
+        
+        IF score >= valuation_threshold THEN
+            // High Value: Commit to long-term vector memory via the Storage Hopper
+            STORAGE_HOPPER.stage_in_hopper(thought_action, CREATE_METADATA(salience: score, status: "RETAINED"))
+            STORAGE_HOPPER.flush_hopper_to_memory()
+            
+            // Allow immediate physical/visual execution
+            DECISION_ENGINE.route_decision(thought_action)
+            RETURN "COMMITTED_AND_EXECUTED"
+            
+        ELSE IF score >= (valuation_threshold * 0.5) THEN
+            // Medium Value: Keep in short-term buffer, allow background evolution without committing to memory
+            APPEND thought_action TO active_thought_hopper
+            RETURN "BUFFERED_FOR_MUTATION"
+            
+        ELSE
+            // Low Value / Noise: Route to the Garden of Thresholds for energy recycling
+            GARDEN_OF_THRESHOLDS.harvest_and_recycle(thought_action, DECISION_ENGINE.nodes)
+            RETURN "RECYCLED_AS_NUTRIENT"
+        END IF
+    END METHOD
+
+    METHOD adapt_valuation_weights(feedback_signal)
+        // Self-tuning mechanism: Alters what the system values based on environmental context or musical tension
+        IF feedback_signal.tension > 0.8 THEN
+            // Under high tension, prioritize novelty and mutation over coherence
+            memory_retention_weights["novelty"] = 0.50
+            memory_retention_weights["structural_coherence"] = 0.10
+        ELSE
+            // Under calm conditions, prioritize structural stability and coherence
+            memory_retention_weights["novelty"] = 0.20
+            memory_retention_weights["structural_coherence"] = 0.40
+        END IF
+    END METHOD
+
+END MODULE

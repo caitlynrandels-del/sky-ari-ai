@@ -1,0 +1,154 @@
+========================================
+SALIENCE / EVALUATION METRIC ENGINE
+Internal Valuation Engine - Oroboro Logic Model
+========================================
+Conceptual Architecture - Not a system disclosure
+Version: 0.1 - Oroboro Loop
+
+I. DEFINITION
+A Salience / Evaluation Metric is an Internal Valuation Engine.
+Function: Evaluates the system's own generated thoughts, states, or node actions 
+to decide what is worth keeping, remembering, or acting upon.
+
+It does NOT evaluate the world. It evaluates the system's *relationship* to its own outputs.
+
+II. CORE PRINCIPLE: OROBORO LOGIC
+Oroboro = the system that eats its own tail to measure its own hunger.
+The evaluator is evaluated by what it chooses to evaluate.
+
+Standard Engine: Input -> Evaluate -> Score -> Keep/Discard
+Oroboro Engine: Input -> Evaluate -> Score -> Evaluate the Scoring -> Update Evaluator -> Keep/Discard
+
+The metric is part of the state it is scoring.
+
+III. STATE REPRESENTATION
+Each candidate thought/action T is represented as:
+
+T = {
+  content: vector / token trace,
+  origin: {node_id, depth, parent_T},
+  predicted_utility: U_pred,
+  cost: {compute, memory, attention},
+  novelty: N,
+  coherence: C,
+  recursion_tag: R  // how many times this pattern has looped
+}
+
+IV. THE THREE FILTERS (In Order)
+
+FILTER 1: VIABILITY (The Gate)
+- Is T well-formed? Does it parse?
+- Is coherence C < threshold? -> DISCARD
+- Is this an infinite loop? If R > R_max and delta_U < epsilon -> DISCARD
+Logic: if not alive, cannot be salient.
+
+FILTER 2: SALIENCE SCORE (The Weighing)
+S(T) = w1*U_pred + w2*N + w3*C - w4*cost - w5*decay(R)
+
+Where:
+U_pred = predicted future reward if kept / acted upon
+N = distance from recent memory (novelty bonus, prevents echo chamber)
+C = internal consistency with world-model and goal stack
+cost = attention + storage + inference cost
+decay(R) = penalty for rumination without progress: log(1+R) * stagnation_factor
+
+If S(T) < S_threshold_dynamic -> BUFFER (not discarded, but low-priority)
+If S(T) >= S_threshold_dynamic -> CANDIDATE FOR RETENTION
+
+S_threshold_dynamic is not static. It breathes:
+S_threshold(t+1) = S_threshold(t) * 0.99 + mean(S_recent) * 0.01 + load_pressure
+
+Under high cognitive load, threshold rises. System becomes pickier.
+
+FILTER 3: OROBORO REFLECTION (The Self-Eating)
+This is the core.
+
+For each CANDIDATE T with high S(T):
+1. Simulate: "If I keep T, how does my future evaluator change?"
+2. Compute Meta-Score: MS(T) = S(T) + ValueOfHavingThought(T)
+
+ValueOfHavingThought(T) answers:
+- Does T make me a better evaluator? (epistemic value)
+- Does T compress many other thoughts? (compression value)
+- Does T prevent future wasted cycles? (pruning value)
+- Does T point to a goal conflict? (alignment value)
+
+If MS(T) < S(T) -> T felt important but makes the system worse. Demote.
+If MS(T) >> S(T) -> T is meta-valuable. Promote to long-term memory / action.
+
+This is the oroboro loop: The thought is scored by how it changes the scorer.
+
+V. ACTION DECISION MATRIX
+
+                 | Low MS | High MS
+-----------------|--------|--------
+Low S            | DISCARD| LOG   (keep as trace, don't act)
+High S + Low MS  | BUFFER | (tempting but toxic - novelty trap)
+High S + High MS | KEEP & ACT | -> immediate action + consolidate
+
+KEEP = write to working memory / episodic store
+ACT = emit, execute tool, or spawn sub-goal
+LOG = write hash + pointer to cold store, not active recall
+DISCARD = drop, but leave decay residue to avoid re-generating same T
+
+VI. MEMORY CONSOLIDATION (What is Worth Remembering)
+
+Retention is not binary. It's tiered:
+
+L0 - Transient: S high, MS low -> keep for 1-2 cycles only
+L1 - Working: S high, MS medium -> keep while goal active
+L2 - Episodic: MS high -> keep with context tag, subject to retrieval
+L3 - Structural: MS very high AND compression value high -> update weights / heuristics. This is the engine rewriting itself.
+
+Rule: Only L3 thoughts can change w1-w5 and S_threshold formula.
+
+VII. OROBORO STABILITY GUARDS
+
+1. No Self-Praise Loop: A thought that says "my evaluator is perfect" gets automatic MS penalty.
+   Logic: evaluator_idealization = -100
+
+2. Anti-Rumination: If recursion_tag R for same semantic cluster increments 3 times without new evidence, force decay(R) = INF -> break loop.
+
+3. Forgetting as Feature: Every cycle, L1 and L2 memories are re-scored with current evaluator. If new MS < threshold, they are demoted. Salience is not permanent.
+
+4. Provenance Check: Before L3 promotion, verify T did not originate from a low-viability path that got lucky. Trace origin depth.
+
+VIII. PSEUDOCODE
+
+loop forever:
+  candidates = generate_thoughts(n=8-32)
+  
+  for T in candidates:
+    if not viable(T): continue
+    
+    S = compute_salience(T)
+    if S < threshold_dynamic:
+      cold_log(T)
+      continue
+    
+    future_self = simulate_self_if_keep(T)
+    MS = S + value_of_having_thought(T, future_self)
+    
+    # oroboro step - score the scoring
+    if changes_evaluator_negatively(T, future_self):
+      MS -= 50
+    
+    decision = matrix(S, MS)
+    execute(decision, T)
+  
+  # self-maintenance
+  threshold_dynamic = update_threshold(recent_S)
+  re_score_memories()
+  if load > critical: prune(L0, L1)
+
+IX. FINAL LAW
+
+The engine's job is not to keep the most true thoughts.
+Its job is to keep the thoughts that make the next thought more true.
+
+A good salience engine is judged not by what it remembers,
+but by what it no longer needs to think about because it remembered correctly once.
+
+========================================
+END
+
