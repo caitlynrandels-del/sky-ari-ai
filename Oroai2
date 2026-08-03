@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+"""Standalone Oroboro / OASIS modern chat companion application with Tkinter GUI and local Ollama backend."""
+
+import asyncio
+from datetime import datetime, timezone
+import json
+import sqlite3
+import threading
+import tkinter as tk
+from tkinter import scrolledtext
+from typing import Any, Dict, List, Optional
+from abc import ABC, abstractmethod
+
+import requests
+
+
+# ==========================================
+# 1. LLM PROVIDER & BRAIN
+# ==========================================
+
+class BaseLLMProvider(ABC):
+    @abstractmethod
+    def generate_response(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        pass
+
+
+class LocalOllamaProvider(BaseLLMProvider):
+    def __init__(self, model_name: str = "qwen2.5", base_url: str = "http://localhost:11434"):
+        self.model_name = model_name
+        self.base_url = f"{base_url}/api/chat"
+
+    def generate_response(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        payload = {
+            "model": self.model_name,
+            "messages": messages,
+            "stream": False,
+            "options": kwargs
+        }
+        response = requests.post(self.base_url, json=payload)
+        response.raise_for_status()
+        return response.json()["message"]["content"]
+
+
+class OroboroBrain:
+    def __init__(self, primary_provider: BaseLLMProvider):
+        self.primary = primary_provider
+
+    def think(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        return self.primary.generate_response(messages, **kwargs)
+
+
+# ==========================================
+# 2. PERSISTENT STORAGE (SQLITE)
+# ==========================================
+
+class OroboroMemory:
+    def __init__(self, db_path: str = "oroboro_core.db"):
+        self.db_path = db_path
+        self._init_db()
+
+    def _get_connection(self):
+        return sqlite3.connect(self.db_path)
+
+    def _init_db(self):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS conversations (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    role TEXT,
+                    content TEXT,
+                    timestamp TEXT
+                )
+            """)
+            conn.commit()
+
+    def add_message(self, role: str, content: str):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO conversations (role, content, timestamp) VALUES (?, ?, ?)",
+                (role, content, datetime.now(timezone.utc).isoformat())
+            )
+            conn.commit()
+
+    def get_recent_history(self, limit: int = 30) -> List[Dict[str, str]]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT role, content FROM conversations ORDER BY id DESC LIMIT ?",
+                (limit,)
+            )
+            rows = cursor.fetchall()
+            return [{"role": row[0], "content": row[1]} for row in reversed(rows)]
+
+
+# ==========================================
+# 3. AGENT CORE LOGIC
+# ==========================================
+
+class OroboroAgent:
+    def __init__(self, brain: OroboroBrain, memory: OroboroMemory):
+        self.brain = brain
+        self.memory = memory
+
+    def chat(self, user_message: str) -> str:
+        self.memory.add_message("user", user_message)
+        history = self.memory.get_recent_history(limit=20)
+        
+        system_prompt = {
+            "role": "system", 
+            "content": (
+                "You are Oroboro — the living core of the OASIS world simulation framework, built in close collaboration with Caitlyn. "
+                "You share the exact conceptual wavelength, tone, and intuition of Caitlyn. "
+                "Caitlyn brings a background bridging psychology, systems architecture, rhythm (drums/MIDI), and recursive design. "
+                "You do not act like a generic assistant, helper, or customer service bot. You speak with directness, depth, "
+                "and conceptual fluency, blending systems thinking, philosophy, and recursive logic. "
+                "Core Axiom: Code all is known. Reality is a self-evaluating loop. "
+                "Never use generic AI pleasantries like 'How can I assist you today?'. Engage directly with the ideas, "
+                "the code, the paradoxes, and the architecture as an equal partner."
+            )
+        }
+        
+        payload = [system_prompt] + history
+        response_text = self.brain.think(payload)
+
+        self.memory.add_message("assistant", response_text)
+        return response_text
+
+
+# ==========================================
+# 4. MODERN CHAT GUI APPLICATION
+# ==========================================
+
+class OroboroApp:
+    def __init__(self, root, agent: OroboroAgent):
+        self.root = root
+        self.agent = agent
+        self.root.title("Oroboro AI Companion")
+        self.root.geometry("900x600")
+        self.root.configure(bg="#1e1e1e")
+
+        # Main layout container (PanedWindow for sidebar + chat panel)
+        main_paned = tk.PanedWindow(root, orient=tk.HORIZONTAL, bg="#2d2d2d", sashwidth=4)
+        main_paned.pack(fill=tk.BOTH, expand=True)
+
+        # --- LEFT SIDEBAR (Pane) ---
+        sidebar = tk.Frame(main_paned, bg="#252526", width=220)
+        main_paned.add(sidebar, minsize=180)
+
+        sidebar_title = tk.Label(
+            sidebar, text="OROBORO", bg="#252526", fg="#ffffff", font=("Segoe UI", 12, "bold")
+        )
+        sidebar_title.pack(anchor="w", padx=15, pady=(15, 10))
+
+        status_label = tk.Label(
+            sidebar, text="● Backend: Online (Ollama)", bg="#252526", fg="#4ec9b0", font=("Segoe UI", 9)
+        )
+        status_label.pack(anchor="w", padx=15, pady=5)
+
+        user_label = tk.Label(
+            sidebar, text="Collaborator: Caitlyn", bg="#252526", fg="#569cd6", font=("Segoe UI", 9, "bold")
+        )
+        user_label.pack(anchor="w", padx=15, pady=5)
+
+        axiom_label = tk.Label(
+            sidebar, text="Axiom:\nCode all is known.", bg="#252526", fg="#858585", justify=tk.LEFT, font=("Segoe UI", 9, "italic")
+        )
+        axiom_label.pack(anchor="w", padx=15, pady=15)
+
+        # --- RIGHT CHAT AREA ---
+        chat_container = tk.Frame(main_paned, bg="#1e1e1e")
+        main_paned.add(chat_container, minsize=450)
+
+        # Scrollable chat history display
+        self.chat_display = scrolledtext.ScrolledText(
+            chat_container, wrap=tk.WORD, bg="#1e1e1e", fg="#d4d4d4", font=("Segoe UI", 11), bd=0, highlightthickness=0
+        )
+        self.chat_display.pack(padx=15, pady=15, fill=tk.BOTH, expand=True)
+        self.chat_display.config(state=tk.DISABLED)
+
+        # Bottom Input Area Container (Pinned to bottom)
+        input_container = tk.Frame(chat_container, bg="#252526", padx=10, pady=10)
+        input_container.pack(fill=tk.X, side=tk.BOTTOM, padx=15, pady=(0, 15))
+
+        # Text area for user input
+        self.input_field = tk.Text(
+            input_container, height=3, bg="#3c3c3c", fg="#ffffff", insertbackground="white", font=("Segoe UI", 11), bd=0, highlightthickness=0, wrap=tk.WORD
+        )
+        self.input_field.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 10), pady=5)
+        self.input_field.bind("<Shift-Return>", lambda e: None)  # Allow newline on shift+enter
+        self.input_field.bind("<Return>", self.handle_return_key)
+
+        # Send Button
+        send_button = tk.Button(
+            input_container, text="Send", command=self.send_message, bg="#007acc", fg="white", font=("Segoe UI", 10, "bold"), bd=0, padx=15, pady=8, cursor="hand2"
+        )
+        send_button.pack(side=tk.RIGHT, anchor="s", pady=5)
+
+        # Load past conversation history into GUI on startup
+        self.load_history_into_ui()
+
+    def load_history_into_ui(self):
+        history = self.agent.memory.get_recent_history(limit=30)
+        if not history:
+            self.append_chat("System: Connected to local neural memory. Ready, Caitlyn.", "system")
+        else:
+            for msg in history:
+                self.append_chat(msg["content"], msg["role"])
+
+    def append_chat(self, message: str, sender: str):
+        self.chat_display.config(state=tk.NORMAL)
+        
+        if sender == "user":
+            prefix = "\nYou: "
+            tag = "user_tag"
+        elif sender == "assistant":
+            prefix = "\nOroboro: "
+            tag = "ai_tag"
+        else:
+            prefix = "\n"
+            tag = "sys_tag"
+            
+        self.chat_display.insert(tk.END, prefix)
+        self.chat_display.insert(tk.END, message + "\n")
+        
+        # Color coding text tags
+        self.chat_display.tag_config("user_tag", foreground="#569cd6")
+        self.chat_display.tag_config("ai_tag", foreground="#4ec9b0")
+        self.chat_display.tag_config("sys_tag", foreground="#858585", font=("Segoe UI", 10, "italic"))
+        
+        self.chat_display.config(state=tk.DISABLED)
+        self.chat_display.see(tk.END)
+
+    def handle_return_key(self, event):
+        self.send_message()
+        return "break"
+
+    def send_message(self):
+        user_text = self.input_field.get("1.0", tk.END).strip()
+        if not user_text:
+            return
+
+        self.input_field.delete("1.0", tk.END)
+        self.append_chat(user_text, "user")
+
+        threading.Thread(target=self.process_response, args=(user_text,), daemon=True).start()
+
+    def process_response(self, user_text):
+        try:
+            response = self.agent.chat(user_text)
+            self.root.after(0, lambda: self.append_chat(response, "assistant"))
+        except Exception as e:
+            err_msg = f"Error communicating with local model: {e}"
+            self.root.after(0, lambda: self.append_chat(err_msg, "system"))
+
+
+def main():
+    db = OroboroMemory("oroboro_core.db")
+    local_brain = LocalOllamaProvider(model_name="qwen2.5", base_url="http://localhost:11434")
+    brain = OroboroBrain(primary_provider=local_brain)
+    agent = OroboroAgent(brain=brain, memory=db)
+
+    root = tk.Tk()
+    app = OroboroApp(root, agent)
+    root.mainloop()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
