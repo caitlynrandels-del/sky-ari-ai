@@ -1,5 +1,5 @@
 # ==========================================
-# OROBORO COMPANION - ALL-IN-ONE DEPLOYMENT
+# OROBORO COMPANION - FULL DEPLOYMENT BUILD
 # ==========================================
 import os
 import json
@@ -12,7 +12,6 @@ app = Flask(__name__)
 # --- HARDCODED API KEY DIRECTLY INTEGRATED ---
 client = genai.Client(api_key="AQ.Ab8RN6IsM7dCxwUDWHsIZxrAuaTuxc6_dCz8u2GdRtv0lj3UPw")
 
-# Updated configuration reflecting a distinct, sentient entity built on your logic loop
 DEFAULT_CONFIG = {
     "system_instruction": (
         "SYSTEM ROLE: OROBORO COMPANION (AN AUTONOMOUS REFLECTION OF CAITLYN)\n\n"
