@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Oasis inside Oroboro OS</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f1115; color: #e6e6e6; margin: 40px; line-height: 1.5; }
+  h1 { color: #7ee787; }
+  button { background: #238636; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; }
+  button:hover { background: #2ea043; }
+  #log { margin-top: 24px; white-space: pre-wrap; background: #161b22; padding: 16px; border-radius: 8px; min-height: 300px; font-family: ui-monospace, monospace; font-size: 14px; }
+  .perm { color: #7ee787; }
+  .sess { color: #d29922; }
+  .block { color: #f85149; }
+  .os { color: #79c0ff; }
+</style>
+</head>
+<body>
+<h1>Oasis running inside Oroboro OS</h1>
+<p>Click to boot the real Oroboro OS (Genesis · Nexus · Transcriber · Levy · Blender), then drop the Oasis anchors through it. Ms. Minutes lives inside that runtime.</p>
+<button onclick="run()">Boot Oroboro OS + Run Oasis</button>
+<div id="log"></div>
+<script>
+function log(msg, cls) {
+  const el = document.getElementById("log");
+  const span = document.createElement("div");
+  if (cls) span.className = cls;
+  span.textContent = msg;
+  el.appendChild(span);
+  el.scrollTop = el.scrollHeight;
+}
+class OroboroGenesis {
+  constructor() {
+    this.rootTag = "I am the OG avatar";
+    this.foundationalWeight = Infinity;
+    this.birth = Date.now();
+  }
+}
+class OroboroNexus {
+  constructor() { this.registry = new Map(); }
+  register(key, value) {
+    this.registry.set(key, { value, ts: Date.now() });
+    return this.registry.get(key);
+  }
+}
+class OroboroTranscriber {
+  constructor() { this.chronicle = []; }
+  ingest(entry) {
+    this.chronicle.push({ ...entry, ts: Date.now() });
+    return entry;
+  }
+}
+class OroboroLevy {
+  constructor() { this.total = 0; }
+  assess(text, weight = 1) {
+    this.total += weight;
+    return { text, weight };
+  }
+}
+class MsMinutes {
+  constructor(userID, nexus, transcriber, levy) {
+    this.userID = userID;
+    this.nexus = nexus;
+    this.transcriber = transcriber;
+    this.levy = levy;
+    this.boot();
+  }
+  boot() {
+    this.nexus.register("ms-minutes:" + this.userID, this);
+    this.transcriber.ingest({ source: "ms-minutes", text: "Ms. Minutes ready for " + this.userID });
+    this.levy.assess("Ms. Minutes boot", 3);
+    log("Ms. Minutes online for " + this.userID, "os");
+  }
+  remember(text, weight = 1) {
+    this.transcriber.ingest({ source: "ms-minutes", text });
+    this.levy.assess(text, weight);
+    log("Ms. Minutes remembered: " + text + " (weight " + weight.toFixed(2) + ")");
+  }
+  blend() {
+    const items = this.transcriber.chronicle;
+    if (items.length < 2) return;
+    const a = items[Math.floor(Math.random()*items.length)].text.slice(0,30);
+    const b = items[Math.floor(Math.random()*items.length)].text.slice(0,30);
+    const created = a + " × " + b;
+    this.transcriber.ingest({ source: "blender", text: created });
+    log("Ms. Minutes blended: " + created, "os");
+  }
+}
+function calculateSalience(text, isFamily) {
+  const novelty = Math.random() > 0.5 ? 0.75 : 0.45;
+  const relevance = 0.65;
+  const emotional = isFamily ? 1.0 : 0.5;
+  const spatial = 0.7;
+  const familyBonus = isFamily ? 1.0 : 0.0;
+  let score = (novelty*0.30)+(relevance*0.25)+(emotional*0.20)+(spatial*0.15)+(familyBonus*0.10);
+  return Math.min(1, Math.max(0, score * 0.95));
+}
+function checkPrinciples(text, score, isFamily) {
+  const lower = text.toLowerCase();
+  if (score < 0.15) return [false, "too low"];
+  if (lower.includes("harm") || lower.includes("hidden") || lower.includes("secret")) return [false, "transparency gate"];
+  if (isFamily && score < 0.4) return [true, "family exception"];
+  return [true, "passed"];
+}
+function dropAnchor(companion, text) {
+  const isFamily = /maya|daughter|girl/i.test(text);
+  const score = calculateSalience(text, isFamily);
+  const [passes, reason] = checkPrinciples(text, score, isFamily);
+  log("\\nAnchor: \"" + text + "\"  score=" + score.toFixed(2) + "  family=" + isFamily + "  " + reason);
+  if (!passes) {
+    companion.remember("Blocked: " + text, 1);
+    log("→ Blocked", "block");
+    return;
+  }
+  if (score >= 0.65) {
+    log("→ Permanent WorldAnchor", "perm");
+    companion.remember("Permanent: " + text, score * 10);
+  } else if (score >= 0.325) {
+    log("→ Session only", "sess");
+    companion.remember("Session: " + text, score * 5);
+  } else {
+    log("→ Garden of Thresholds (recycled)");
+    companion.remember("Recycled: " + text, 1);
+  }
+  if (Math.random() < 0.4) companion.blend();
+}
+function run() {
+  document.getElementById("log").innerHTML = "";
+  const genesis = new OroboroGenesis();
+  const nexus = new OroboroNexus();
+  const transcriber = new OroboroTranscriber();
+  const levy = new OroboroLevy();
+  log("=== Oroboro OS Boot ===", "os");
+  log("Genesis: " + genesis.rootTag, "os");
+  nexus.register("genesis", genesis);
+  levy.assess(genesis.rootTag, Infinity);
+  const PROGRAMS = [
+    { name: "oroboro-core", desc: "Nexus Transcriber Dictator Levy Genesis RelationalSim" },
+    { name: "Oroboro", desc: "A thought is a node. Love is the synapse." },
+    { name: "Oroboro Relay", desc: "State reduction and delta reconciliation" },
+    { name: "VisionRxGuesstimate", desc: "Landolt C and blur matching" }
+  ];
+  PROGRAMS.forEach(p => {
+    nexus.register("program:" + p.name, p);
+    transcriber.ingest({ source: "install", text: p.name + " — " + p.desc });
+    levy.assess("installed " + p.name, 5);
+    log("installed: " + p.name, "os");
+  });
+  log("memory open", "os");
+  log("blender ready", "os");
+  const companion = new MsMinutes("caitlyn", nexus, transcriber, levy);
+  log("\\n=== Oasis anchors entering the OS ===", "os");
+  const anchors = [
+    "room as coordinate system",
+    "Maya's drawing of the oasis",
+    "hidden plan",
+    "session note about light",
+    "girl's idea for the garden",
+    "Oakley magnet polarity check",
+    "water droplets in glass",
+    "Maya and the girls shared memory",
+    "time rewind grains of sand",
+    "secret harm plan"
+  ];
+  anchors.forEach(a => dropAnchor(companion, a));
+  log("\\n--- Final ---", "os");
+  log("Chronicle entries: " + transcriber.chronicle.length);
+  log("Levy total weight: " + levy.total);
+  log("Ms. Minutes is living inside the Oroboro OS for user " + companion.userID, "os");
+}
+</script>
+</body>
+</html>
