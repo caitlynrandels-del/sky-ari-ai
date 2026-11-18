@@ -2,6 +2,12 @@
 
 This package includes the cleaned and enhanced visionOS app with the requested features, plus **Ms. Minutes**.
 
+## Run under Oroboro OS (no Xcode needed)
+```bash
+node run-oasis.js
+```
+This boots the Oasis scoring + principles + Ms. Minutes inside the Oroboro OS runtime.
+
 ## Ms. Minutes
 Ms. Minutes is the personal AI companion for each user. She is the Oroboro OS (Genesis, Nexus, Transcriber, Levy, and the blender) living inside the Oasis as an individual companion. She remembers anchors, blends ideas, and stays private to that user.
 
